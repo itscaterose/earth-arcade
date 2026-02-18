@@ -1,98 +1,81 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
 import crypto from 'crypto';
-import { mission1Email } from '../../../lib/emails/mission-1';
+import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { sendMission } from '../../../lib/sendMission';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-const resend = new Resend(process.env.RESEND_API_KEY!);
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const { email } = req.body;
+
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    return res.status(400).json({ error: 'Valid email required' });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
   try {
-    const { email } = req.body;
-
-    if (!email || !email.includes('@')) {
-      return res.status(400).json({ error: 'Valid email required' });
-    }
-
-    const { data: existingPlayer } = await supabase
+    // Check if player already exists
+    const { data: existingPlayer } = await supabaseAdmin
       .from('players')
-      .select('*')
-      .eq('email', email.toLowerCase())
+      .select('id')
+      .eq('email', normalizedEmail)
       .single();
 
     if (existingPlayer) {
-      const { data: progress } = await supabase
+      // Resend Mission 1 only if they haven't progressed past it
+      const { data: progress } = await supabaseAdmin
         .from('missions_progress')
-        .select('*')
+        .select('current_mission')
         .eq('player_id', existingPlayer.id)
         .single();
 
       if (!progress || progress.current_mission === 1) {
-        await sendMission1(email);
+        await sendMission(existingPlayer.id, 1);
       }
-      
+
       return res.status(200).json({ success: true });
     }
 
+    // Create new player
     const playerToken = crypto.randomBytes(32).toString('hex');
-    
-    const { data: player, error: playerError } = await supabase
+
+    const { data: player, error: playerError } = await supabaseAdmin
       .from('players')
       .insert({
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         token: playerToken,
-        stardust_balance: 50
+        stardust_balance: 50,
       })
-      .select()
+      .select('id')
       .single();
 
     if (playerError || !player) {
       console.error('Player creation error:', playerError);
-      throw new Error(playerError?.message || 'Failed to create player');
+      return res.status(500).json({ error: 'Failed to create player' });
     }
 
-    await supabase
-      .from('missions_progress')
-      .insert({
-        player_id: player.id,
-        current_mission: 1,
-        last_sent_at: new Date().toISOString()
-      });
+    // Log the welcome stardust transaction
+    await supabaseAdmin.from('stardust_transactions').insert({
+      player_id: player.id,
+      amount: 50,
+      tx_type: 'earn',
+      reason: 'Welcome bonus',
+    });
 
-    await sendMission1(email);
+    // Send Mission 1 (also creates missions_progress via sendMission)
+    const result = await sendMission(player.id, 1);
 
-    res.status(200).json({ success: true });
+    if (!result.success) {
+      console.error('Failed to send Mission 1:', result.error);
+      // Don't fail the signup — player is created, email can be retried
+    }
+
+    return res.status(200).json({ success: true });
   } catch (error) {
     console.error('Signup error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-}
-
-async function sendMission1(email: string) {
-  try {
-    console.log('Attempting to send email to:', email);
-    const result = await resend.emails.send({
-      from: 'Letta <letta@eartharcade.com>',
-      to: email,
-      subject: "Darling, You've Been Spotted",
-      html: mission1Email,
-      replyTo: 'cate@earth-arcade.com'
-    });
-    console.log('Email sent successfully:', result);
-  } catch (error) {
-    console.error('Failed to send email:', error);
-    throw error;
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
