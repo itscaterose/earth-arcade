@@ -1,63 +1,79 @@
-import { createClient } from '@supabase/supabase-js'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { randomBytes } from 'crypto'
+import type { CreatePlayerResponse, ApiErrorResponse } from '@/types'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { sanitizeEmail, sendErrorResponse, handleUnknownError } from '@/lib/validation'
+import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
+async function handler(
+  req: AuthenticatedRequest,
+  res: NextApiResponse<CreatePlayerResponse | ApiErrorResponse>
 ) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
+    return sendErrorResponse(res, 405, 'Method not allowed')
   }
 
-  const { email } = req.body
+  // Get email from authenticated user
+  const email = req.user?.email
 
-  if (!email || typeof email !== 'string') {
-    return res.status(400).json({ error: 'Missing email' })
+  if (!email) {
+    return sendErrorResponse(res, 401, 'No email found in auth token')
   }
+
+  const sanitizedEmail = sanitizeEmail(email)
 
   try {
     // Check if player already exists
-    const { data: existing } = await supabase
+    const { data: existing, error: checkError } = await supabaseAdmin
       .from('players')
-      .select('id')
-      .eq('email', email.toLowerCase())
+      .select('id, email, stardust_balance, created_at')
+      .eq('email', sanitizedEmail)
       .single()
 
+    if (checkError && checkError.code !== 'PGRST116') {
+      // PGRST116 is "not found" error - any other error should throw
+      throw checkError
+    }
+
     if (existing) {
-      return res.status(200).json({ 
-        player_id: existing.id,
+      return res.status(200).json({
+        player: existing as any,
         message: 'Player already exists'
       })
     }
 
     // Create new player with welcome bonus
-    const player_token = randomBytes(16).toString('hex')
-    
-    const { data: player, error } = await supabase
+    const playerToken = randomBytes(16).toString('hex')
+
+    const { data: player, error: insertError } = await supabaseAdmin
       .from('players')
       .insert({
-        email: email.toLowerCase(),
-        token: player_token,
+        email: sanitizedEmail,
+        token: playerToken,
         stardust_balance: 50
       })
-      .select('id')
+      .select('id, email, stardust_balance, created_at')
       .single()
 
-    if (error) throw error
+    if (insertError) throw insertError
 
-    return res.status(201).json({ 
-      player_id: player.id,
+    if (!player) {
+      throw new Error('Failed to create player')
+    }
+
+    return res.status(201).json({
+      player: player as any,
       message: 'Player created successfully'
     })
 
-  } catch (error: any) {
-    console.error('Error creating player:', error)
-    return res.status(500).json({ error: error.message })
+  } catch (error) {
+    return handleUnknownError(res, error, 'Error creating player')
   }
+}
+
+export default async function createPlayerHandler(
+  req: NextApiRequest,
+  res: NextApiResponse<CreatePlayerResponse | ApiErrorResponse>
+) {
+  return withAuth(req as AuthenticatedRequest, res, handler)
 }

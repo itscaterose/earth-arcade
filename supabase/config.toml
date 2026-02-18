@@ -1,0 +1,44 @@
+# Supabase Configuration
+# Learn more: https://supabase.com/docs/guides/cli/config
+
+[project]
+# Project name (used in CLI)
+name = "stardust-web"
+
+[api]
+# Port to use for the API URL
+port = 54321
+# Schemas to expose in your API
+schemas = ["public", "graphql_public"]
+# Additional schemas to load into the database
+extra_search_path = ["public", "extensions"]
+# Maximum number of rows returned from a single query
+max_rows = 1000
+
+[db]
+# Port to use for the local database
+port = 54322
+# Database user for local development
+user = "postgres"
+# Password for the database user
+password = "postgres"
+
+[studio]
+# Port to use for Supabase Studio
+port = 54323
+
+[inbucket]
+# Port to use for the email testing server (Inbucket)
+port = 54324
+
+[auth]
+# Allow anonymous sign-ins
+enable_signup = true
+
+[auth.email]
+# Enable email confirmation for new signups
+enable_signup = true
+# Enable email confirmations for signups
+double_confirm_changes = true
+# Use magic link instead of password
+enable_confirmations = false

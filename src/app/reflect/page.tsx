@@ -2,13 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { Starfield } from "@/components/Starfield";
+import { Input } from "@/components/Input";
+import { Textarea } from "@/components/Textarea";
+import { Button } from "@/components/Button";
 
 export default function ReflectPage() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sendingLink" | "ready" | "saving" | "success" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "ready" | "saving" | "success" | "error">("idle");
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [errMsg, setErrMsg] = useState<string | null>(null);
+  const [isSendingLink, setIsSendingLink] = useState(false);
   const isAuthed = useMemo(() => !!playerId, [playerId]);
 
   useEffect(() => {
@@ -33,13 +38,14 @@ export default function ReflectPage() {
     e.preventDefault();
     setErrMsg(null);
     if (!email) return;
-    setStatus("sendingLink");
+    setIsSendingLink(true);
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: `${window.location.origin}/reflect`,
       },
     });
+    setIsSendingLink(false);
     if (error) {
       setErrMsg(error.message);
       setStatus("error");
@@ -64,56 +70,114 @@ export default function ReflectPage() {
     }
   }
 
-  if (status === "idle" || status === "sendingLink") {
-    return <div className="p-8 text-white">Loading...</div>;
+  if (status === "idle") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Starfield />
+        <div className="label-text opacity-40">◌ ◌ ◌</div>
+      </div>
+    );
   }
 
   if (!isAuthed) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <Starfield />
+
         <div className="max-w-md w-full">
-          <h1 className="text-3xl mb-6">Sign in to reflect</h1>
-          <form onSubmit={sendMagicLink} className="space-y-4">
-            <input
+          <div className="mb-12 text-center">
+            <div className="label-text mb-6">◌ Authentication ◌</div>
+            <h1 className="text-3xl md:text-4xl font-semibold mb-4">
+              Sign in to reflect
+            </h1>
+            <p className="text-[var(--text-secondary)] text-sm">
+              Enter your email to receive a magic link
+            </p>
+          </div>
+
+          <form onSubmit={sendMagicLink} className="space-y-6">
+            <Input
               type="email"
-              placeholder="Your email"
+              placeholder="your@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 bg-gray-900 border border-gray-700 rounded"
+              required
             />
-            <button
+
+            <Button
               type="submit"
-              className="w-full p-3 bg-teal-500 hover:bg-teal-600 rounded font-semibold"
+              variant="secondary"
+              fullWidth
+              disabled={!email || isSendingLink}
             >
-              Send magic link
-            </button>
+              {isSendingLink ? "Sending..." : "Send Magic Link"}
+            </Button>
           </form>
-          {errMsg && <p className="mt-4 text-red-500">{errMsg}</p>}
-          {status === "success" && <p className="mt-4 text-green-500">Check your email!</p>}
+
+          {errMsg && (
+            <div className="mt-6 p-4 border border-red-500/30 bg-red-500/10">
+              <p className="text-red-400 text-sm">{errMsg}</p>
+            </div>
+          )}
+
+          {status === "success" && (
+            <div className="mt-6 p-4 border border-[var(--border-secondary)] bg-[var(--accent-faint)]">
+              <p className="text-[var(--accent-primary)] text-sm">
+                ✓ Check your email for the magic link!
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full">
-        <h1 className="text-3xl mb-6">Reflect on your journey</h1>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="What did you discover?"
-          className="w-full h-64 p-4 bg-gray-900 border border-gray-700 rounded resize-none"
-        />
-        <button
-          onClick={saveReflection}
-          disabled={!text.trim() || status === "saving"}
-          className="mt-4 w-full p-3 bg-teal-500 hover:bg-teal-600 disabled:bg-gray-700 rounded font-semibold"
-        >
-          {status === "saving" ? "Saving..." : "Save reflection"}
-        </button>
-        {errMsg && <p className="mt-4 text-red-500">{errMsg}</p>}
-        {status === "success" && <p className="mt-4 text-green-500">Reflection saved!</p>}
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <Starfield />
+
+      <div className="max-w-3xl w-full">
+        <div className="mb-12 text-center">
+          <div className="label-text mb-6">◌ Reflection ◌</div>
+          <h1 className="text-3xl md:text-4xl font-semibold mb-4">
+            Reflect on your journey
+          </h1>
+          <p className="text-[var(--text-secondary)] text-sm">
+            What insights have you discovered?
+          </p>
+        </div>
+
+        <div className="space-y-6">
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Begin writing your reflection..."
+            rows={12}
+          />
+
+          <Button
+            onClick={saveReflection}
+            disabled={!text.trim() || status === "saving"}
+            variant="secondary"
+            fullWidth
+          >
+            {status === "saving" ? "Saving..." : "Save Reflection"}
+          </Button>
+        </div>
+
+        {errMsg && (
+          <div className="mt-6 p-4 border border-red-500/30 bg-red-500/10">
+            <p className="text-red-400 text-sm">{errMsg}</p>
+          </div>
+        )}
+
+        {status === "success" && (
+          <div className="mt-6 p-4 border border-[var(--border-secondary)] bg-[var(--accent-faint)]">
+            <p className="text-[var(--accent-primary)] text-sm text-center">
+              ✓ Reflection saved successfully
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

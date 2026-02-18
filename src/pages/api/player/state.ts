@@ -1,48 +1,56 @@
-import { createClient } from '@supabase/supabase-js'
 import type { NextApiRequest, NextApiResponse } from 'next'
+import type { PlayerStateResponse, ApiErrorResponse } from '@/types'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { sendErrorResponse, handleUnknownError } from '@/lib/validation'
+import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
+async function handler(
+  req: AuthenticatedRequest,
+  res: NextApiResponse<PlayerStateResponse | ApiErrorResponse>
 ) {
   if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' })
+    return sendErrorResponse(res, 405, 'Method not allowed')
   }
 
-  const { player_id } = req.query
+  // Get email from authenticated user
+  const email = req.user?.email
 
-  if (!player_id || typeof player_id !== 'string') {
-    return res.status(400).json({ error: 'Missing player_id' })
+  if (!email) {
+    return sendErrorResponse(res, 401, 'No email found in auth token')
   }
 
   try {
-    // 1. Get player info
-    const { data: player, error: playerError } = await supabase
+    // 1. Get player info by email
+    const { data: player, error: playerError } = await supabaseAdmin
       .from('players')
-      .select('stardust_balance, email')
-      .eq('id', player_id)
+      .select('id, stardust_balance, email')
+      .eq('email', email.toLowerCase())
       .single()
 
-    if (playerError) throw playerError
+    if (playerError) {
+      if (playerError.code === 'PGRST116') {
+        return sendErrorResponse(res, 404, 'Player not found')
+      }
+      throw playerError
+    }
+
+    if (!player) {
+      return sendErrorResponse(res, 404, 'Player not found')
+    }
 
     // 2. Get unlocked secrets
-    const { data: unlocks, error: unlocksError } = await supabase
+    const { data: unlocks, error: unlocksError } = await supabaseAdmin
       .from('player_unlocks')
       .select('ref_id')
-      .eq('player_id', player_id)
+      .eq('player_id', player.id)
       .eq('unlock_type', 'secret')
 
     if (unlocksError) throw unlocksError
 
-    const unlockedSecretIds = unlocks.map(u => u.ref_id)
+    const unlockedSecretIds = (unlocks || []).map(u => u.ref_id)
 
     // 3. Get all available secrets
-    const { data: secrets, error: secretsError } = await supabase
+    const { data: secrets, error: secretsError } = await supabaseAdmin
       .from('secrets')
       .select('id, code, cost, title')
       .eq('is_active', true)
@@ -51,7 +59,7 @@ export default async function handler(
     if (secretsError) throw secretsError
 
     // 4. Mark which are unlocked
-    const secretsWithStatus = secrets.map(s => ({
+    const secretsWithStatus = (secrets || []).map(s => ({
       ...s,
       unlocked: unlockedSecretIds.includes(s.id)
     }))
@@ -64,8 +72,14 @@ export default async function handler(
       secrets: secretsWithStatus
     })
 
-  } catch (error: any) {
-    console.error('Error fetching player state:', error)
-    return res.status(500).json({ error: error.message })
+  } catch (error) {
+    return handleUnknownError(res, error, 'Error fetching player state')
   }
+}
+
+export default async function playerStateHandler(
+  req: NextApiRequest,
+  res: NextApiResponse<PlayerStateResponse | ApiErrorResponse>
+) {
+  return withAuth(req as AuthenticatedRequest, res, handler)
 }

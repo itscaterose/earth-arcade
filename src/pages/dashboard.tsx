@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
+import { Starfield } from '@/components/Starfield'
 
 export default function Dashboard() {
   const router = useRouter()
   const { player_id } = router.query
-  
+
   const [state, setState] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [unlocking, setUnlocking] = useState(false)
@@ -44,95 +45,36 @@ export default function Dashboard() {
   }
 
   if (loading) return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#0a0a0a',
-      color: '#7dd3c0',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontFamily: '"Space Grotesk", sans-serif',
-      fontSize: '12px',
-      letterSpacing: '3px',
-      fontWeight: 300
-    }}>
-      <div style={{opacity: 0.4}}>◌ ◌ ◌</div>
+    <div className="min-h-screen flex items-center justify-center">
+      <Starfield />
+      <div className="label-text opacity-40">◌ ◌ ◌</div>
     </div>
   )
 
   if (revealedSecret) return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#0a0a0a',
-      color: '#ffffff',
-      padding: '80px 40px',
-      fontFamily: '"Space Grotesk", sans-serif',
-      fontSize: '16px',
-      lineHeight: '1.8',
-      maxWidth: '680px',
-      margin: '0 auto',
-      fontWeight: 400
-    }}>
-      <div style={{
-        marginBottom: '60px', 
-        textAlign: 'center', 
-        fontSize: '10px', 
-        letterSpacing: '6px', 
-        opacity: 0.4,
-        fontWeight: 400
-      }}>
-        ✧ SECRET REVEALED ✧
-      </div>
-      
-      <h1 style={{
-        fontSize: '28px',
-        marginBottom: '50px',
-        textAlign: 'center',
-        letterSpacing: '0px',
-        fontWeight: 600,
-        color: '#7dd3c0',
-        lineHeight: '1.3'
-      }}>
-        {revealedSecret.title}
-      </h1>
-      
-      <div style={{
-        whiteSpace: 'pre-wrap',
-        marginBottom: '80px',
-        opacity: 0.9,
-        letterSpacing: '0px',
-        fontWeight: 400
-      }}>
-        {revealedSecret.content}
-      </div>
-      
-      <div style={{textAlign: 'center'}}>
-        <button 
-          onClick={() => setRevealedSecret(null)}
-          style={{
-            background: 'transparent',
-            border: '1px solid rgba(125, 211, 192, 0.4)',
-            color: '#7dd3c0',
-            padding: '16px 50px',
-            cursor: 'pointer',
-            fontFamily: '"Space Grotesk", sans-serif',
-            fontSize: '11px',
-            letterSpacing: '3px',
-            transition: 'all 0.3s ease',
-            opacity: 0.8,
-            fontWeight: 500
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = '1'
-            e.currentTarget.style.borderColor = 'rgba(125, 211, 192, 0.8)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = '0.8'
-            e.currentTarget.style.borderColor = 'rgba(125, 211, 192, 0.4)'
-          }}
-        >
-          RETURN
-        </button>
+    <div className="min-h-screen py-20 px-10">
+      <Starfield />
+      <div className="max-w-[680px] mx-auto">
+        <div className="mb-16 text-center text-[10px] tracking-[6px] opacity-40">
+          ✧ SECRET REVEALED ✧
+        </div>
+
+        <h1 className="text-3xl mb-12 text-center font-semibold text-[var(--accent-primary)] leading-tight">
+          {revealedSecret.title}
+        </h1>
+
+        <div className="whitespace-pre-wrap mb-20 opacity-90 leading-relaxed">
+          {revealedSecret.content}
+        </div>
+
+        <div className="text-center">
+          <button
+            onClick={() => setRevealedSecret(null)}
+            className="px-12 py-4 bg-transparent border border-[var(--border-primary)] text-[var(--accent-primary)] text-[11px] tracking-[3px] uppercase font-medium hover:border-[var(--accent-primary)] hover:opacity-100 opacity-80 transition-all"
+          >
+            Return
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -140,170 +82,79 @@ export default function Dashboard() {
   const revealedCount = state.secrets.filter((s: any) => s.unlocked).length
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#0a0a0a',
-      color: '#ffffff',
-      padding: '60px 40px 120px',
-      fontFamily: '"Space Grotesk", sans-serif'
-    }}>
-      <div style={{maxWidth: '900px', margin: '0 auto'}}>
-        
+    <div className="min-h-screen py-16 px-10 pb-32">
+      <Starfield />
+      <div className="max-w-[900px] mx-auto">
+
         {/* Header - Player Identity */}
-        <div style={{
-          marginBottom: '80px',
-          paddingBottom: '40px',
-          borderBottom: '1px solid rgba(125, 211, 192, 0.1)'
-        }}>
-          <div style={{
-            fontSize: '11px',
-            letterSpacing: '4px',
-            marginBottom: '12px',
-            opacity: 0.5,
-            fontWeight: 400,
-            textTransform: 'uppercase'
-          }}>
-            Player
-          </div>
-          <div style={{
-            fontSize: '24px',
-            marginBottom: '6px',
-            fontWeight: 600,
-            letterSpacing: '-0.5px'
-          }}>
+        <div className="mb-20 pb-10 border-b border-[var(--border-secondary)]">
+          <div className="label-text mb-3">Player</div>
+          <div className="text-2xl mb-2 font-semibold tracking-tight">
             {state.player.email.split('@')[0]}
           </div>
-          <div style={{
-            fontSize: '12px',
-            opacity: 0.4,
-            fontWeight: 400
-          }}>
+          <div className="text-xs opacity-40">
             Arc 1 • {revealedCount} {revealedCount === 1 ? 'Secret' : 'Secrets'} Revealed
           </div>
         </div>
 
         {/* Giant Stardust Balance */}
-        <div style={{
-          textAlign: 'center',
-          marginBottom: '100px',
-          paddingBottom: '60px',
-          borderBottom: '1px solid rgba(125, 211, 192, 0.1)'
-        }}>
-          <div style={{
-            fontSize: '60px',
-            letterSpacing: '-2px',
-            color: '#7dd3c0',
-            fontWeight: 700,
-            lineHeight: '1',
-            textTransform: 'uppercase'
-          }}>
+        <div className="text-center mb-24 pb-16 border-b border-[var(--border-secondary)]">
+          <div className="text-6xl tracking-tight text-[var(--accent-primary)] font-bold leading-none uppercase">
             {'<*> STARDUST <*>'}
           </div>
-          <div style={{
-            fontSize: '60px',
-            letterSpacing: '-2px',
-            color: '#ffffff',
-            fontWeight: 700,
-            lineHeight: '1'
-          }}>
+          <div className="text-6xl tracking-tight font-bold leading-none mt-2">
             {state.player.stardust_balance}
           </div>
         </div>
 
         {/* Secrets Grid */}
-        <div style={{
-          fontSize: '11px',
-          letterSpacing: '4px',
-          marginBottom: '30px',
-          opacity: 0.5,
-          fontWeight: 400,
-          textTransform: 'uppercase',
-          textAlign: 'center'
-        }}>
+        <div className="label-text mb-8 text-center">
           Secrets
         </div>
 
-        <div style={{
-          display: 'grid',
-          gap: '1px',
-          background: 'rgba(125, 211, 192, 0.08)',
-          border: '1px solid rgba(125, 211, 192, 0.08)'
-        }}>
-          {state.secrets.map((secret: any) => (
-            <div key={secret.id} style={{
-              padding: '40px 35px',
-              background: '#0a0a0a',
-              position: 'relative',
-              transition: 'all 0.3s ease',
-              opacity: secret.unlocked ? 0.4 : 1
-            }}>
-              <div style={{
-                fontSize: '17px',
-                marginBottom: '10px',
-                letterSpacing: '0px',
-                color: secret.unlocked ? '#7dd3c0' : '#ffffff',
-                fontWeight: 600,
-                lineHeight: '1.4'
-              }}>
-                {secret.unlocked ? secret.title : `◌ ◌ ◌`}
-              </div>
-              
-              <div style={{
-                fontSize: '11px',
-                marginBottom: '28px',
-                opacity: 0.5,
-                letterSpacing: '2px',
-                fontWeight: 400
-              }}>
-                {secret.cost} STARDUST
-              </div>
-              
-              {secret.unlocked ? (
-                <div style={{
-                  fontSize: '10px',
-                  letterSpacing: '3px',
-                  opacity: 0.4,
-                  fontWeight: 400
-                }}>
-                  ✓ REVEALED
+        <div className="grid gap-[1px] bg-[var(--border-faint)] border border-[var(--border-faint)]">
+          {state.secrets.map((secret: any) => {
+            const canAfford = state.player.stardust_balance >= secret.cost
+
+            return (
+              <div
+                key={secret.id}
+                className={`p-10 bg-[var(--bg-primary)] transition-all ${
+                  secret.unlocked ? 'opacity-40' : 'opacity-100'
+                }`}
+              >
+                <div className={`text-lg mb-3 font-semibold leading-snug ${
+                  secret.unlocked ? 'text-[var(--accent-primary)]' : ''
+                }`}>
+                  {secret.unlocked ? secret.title : '◌ ◌ ◌'}
                 </div>
-              ) : (
-                <button 
-                  onClick={() => unlockSecret(secret.code)}
-                  disabled={unlocking || state.player.stardust_balance < secret.cost}
-                  style={{
-                    background: 'transparent',
-                    border: state.player.stardust_balance >= secret.cost 
-                      ? '1px solid rgba(125, 211, 192, 0.4)' 
-                      : '1px solid rgba(125, 211, 192, 0.1)',
-                    color: state.player.stardust_balance >= secret.cost ? '#7dd3c0' : 'rgba(125, 211, 192, 0.3)',
-                    padding: '14px 40px',
-                    cursor: state.player.stardust_balance >= secret.cost ? 'pointer' : 'not-allowed',
-                    fontFamily: '"Space Grotesk", sans-serif',
-                    fontSize: '11px',
-                    letterSpacing: '3px',
-                    transition: 'all 0.3s ease',
-                    opacity: state.player.stardust_balance >= secret.cost ? 0.8 : 0.3,
-                    fontWeight: 500
-                  }}
-                  onMouseEnter={(e) => {
-                    if (state.player.stardust_balance >= secret.cost) {
-                      e.currentTarget.style.opacity = '1'
-                      e.currentTarget.style.borderColor = 'rgba(125, 211, 192, 0.8)'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (state.player.stardust_balance >= secret.cost) {
-                      e.currentTarget.style.opacity = '0.8'
-                      e.currentTarget.style.borderColor = 'rgba(125, 211, 192, 0.4)'
-                    }
-                  }}
-                >
-                  {unlocking ? 'REVEALING...' : 'REVEAL'}
-                </button>
-              )}
-            </div>
-          ))}
+
+                <div className="text-[11px] mb-7 opacity-50 tracking-[2px]">
+                  {secret.cost} STARDUST
+                </div>
+
+                {secret.unlocked ? (
+                  <div className="text-[10px] tracking-[3px] opacity-40">
+                    ✓ REVEALED
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => unlockSecret(secret.code)}
+                    disabled={unlocking || !canAfford}
+                    className={`
+                      px-10 py-4 bg-transparent border text-[11px] tracking-[3px] uppercase font-medium transition-all
+                      ${canAfford
+                        ? 'border-[var(--border-primary)] text-[var(--accent-primary)] hover:border-[var(--accent-primary)] hover:opacity-100 opacity-80 cursor-pointer'
+                        : 'border-[var(--border-secondary)] text-[var(--accent-tertiary)] opacity-30 cursor-not-allowed'
+                      }
+                    `}
+                  >
+                    {unlocking ? 'Revealing...' : 'Reveal'}
+                  </button>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
